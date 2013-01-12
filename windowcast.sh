@@ -56,7 +56,6 @@ start_recording() {
 }
 
 stop_recording() {
-    [[ -e $PIDFILE ]] || die "You are not recording."
     kill -2 $(cat $PIDFILE)
     rm -f $PIDFILE
     exit 1
@@ -98,6 +97,7 @@ The following VARIABLES are available:
 
 case "$1" in
     start   )
+        [[ ! -e $PIDFILE ]] || die "You're already recording!"
         shift
         while [[ $# -gt 0 ]]; do
             case "$1" in
@@ -127,6 +127,7 @@ case "$1" in
         done
         start_recording;;
     stop    )
+        [[ -e $PIDFILE ]] || die "You are not recording."
         stop_recording;;
     status  )
         check_recording;;
