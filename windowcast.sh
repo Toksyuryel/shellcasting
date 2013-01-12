@@ -19,7 +19,11 @@ die() {
 [[ -z $QUALITY ]] && QUALITY=10
 
 INFO=$(xwininfo)
-WIN_GEO="$(echo $INFO | grep -oEe 'Width: [0-9]*' | grep -oEe '[0-9]*')x$(echo $INFO | grep -oEe 'Height: [0-9]*' | grep -oEe '[0-9]*')"
+WIN_WIDTH="$(echo $INFO | grep -oEe 'Width: [0-9]*' | grep -oEe '[0-9]*')"
+[[ $(expr $WIN_WIDTH % 2) -eq 0 ]] || WIN_WIDTH=$(expr $WIN_WIDTH + 1)
+WIN_HEIGHT="$(echo $INFO | grep -oEe 'Height: [0-9]*' | grep -oEe '[0-9]*')"
+[[ $(expr $WIN_HEIGHT % 2) -eq 0 ]] || WIN_HEIGHT=$(expr $WIN_HEIGHT + 1)
+WIN_GEO="$WIN_WIDTH""x""$WIN_HEIGHT"
 WIN_XY=$(echo $INFO | grep -oEe 'Corners:\s+\+[0-9]+\+[0-9]+' | grep -oEe '[0-9]+\+[0-9]+' | sed -e 's/\+/,/')
 JACK=$(pgrep jackd)
 
@@ -53,19 +57,19 @@ finish() {
     if [[ -t 0 ]]
     then
         read -p "now recording (press enter to stop)"
-        kill -2 $(echo $PIDFILE)
+        kill -2 $(cat $PIDFILE)
         rm -f $PIDFILE
         exit 0
     else
         xmessage -buttons stop:0 "recording in progress"
-        kill -2 $(echo $PIDFILE)
+        kill -2 $(cat $PIDFILE)
         rm -f $PIDFILE
         exit 0
     fi
 }
 
 eval $FFMPEG
-echo $! > $PIDFILE
+echo "$!" > $PIDFILE
 
 if [[ -n $JACK ]]
 then
