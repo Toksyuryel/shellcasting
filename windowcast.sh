@@ -12,7 +12,7 @@ die() {
 
 [[ -z $RECDIR ]] && RECDIR=$HOME/video/new
 [[ -z $LOGDIR ]] && LOGDIR=$HOME/log
-[[ -z $MICPORT ]] && MIC="hw:1,0"
+[[ -z $MICPORT ]] && MICPORT="hw:1,0"
 [[ -z $MICCHANNELS ]] && MICCHANNELS=1
 [[ -z $FPS ]] && FPS=30
 [[ -z $QUALITY ]] && QUALITY=10
