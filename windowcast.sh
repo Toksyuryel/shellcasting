@@ -12,8 +12,8 @@ die() {
 
 [[ -z $RECDIR ]] && RECDIR=$HOME/video/new
 [[ -z $LOGDIR ]] && LOGDIR=$HOME/log
-[[ -z $MICPORT ]] && MICPORT="hw:1,0"
-[[ -z $MICCHANNELS ]] && MICCHANNELS=1
+#[[ -z $MICPORT ]] && MICPORT="hw:1,0"
+[[ -z $MICCHANNELS ]] && MICCHANNELS=2
 [[ -z $FPS ]] && FPS=30
 [[ -z $QUALITY ]] && QUALITY=10
 
@@ -28,29 +28,17 @@ then
     WIN_PID=$(xprop -id $WIN_ID | grep -oEe 'PID\(CARDINAL\) = [0-9]*' | grep -oEe '[0-9]*') || die "FATAL ERROR: application does not set _NET_WM_PID.\nPlease manually set WIN_PID and try again."
 fi
 
-start_recording() {
-    if [[ -n $JACK ]]
-    then
-        if [[ -n $(jack_lsp | grep $WIN_PID) ]]
-        then
-            ffmpeg \
-                -f alsa -ac $MICCHANNELS -i $MICPORT \
-                -f jack -i ffmpeg \
-                -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
-                -vcodec libx264 -preset ultrafast -crf $QUALITY -y -map 0 -map 1 -map 2 $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
-        else
-            ffmpeg \
-                -f alsa -ac $MICCHANNELS -i $MICPORT \
-                -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
-                -vcodec libx264 -preset ultrafast -crf $QUALITY -y $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
-        fi
-    else
-        ffmpeg \
-            -f alsa -ac $MICCHANNELS -i $MICPORT \
-            -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
-            -vcodec libx264 -preset ultrafast -crf $QUALITY -y $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
-    fi
-}
+JACK=$(jack_lsp | grep $WIN_PID)
+
+FFMPEG="ffmpeg"
+[[ -n $MICPORT ]] && FFMPEG="$FFMPEG -f alsa -ac $MICCHANNELS -i $MICPORT"
+[[ -n $JACK ]] && FFMPEG="$FFMPEG -f jack -i ffmpeg"
+FFMPEG="$FFMPEG -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY -vcodec libx264 -preset ultrafast -crf $QUALITY -y"
+if [[ -n $MICPORT ]] && [[ -n $JACK ]]
+then
+    FFMPEG="$FFMPEG -map 0 -map 1 -map 2"
+fi
+FFMPEG="$FFMPEG $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &"
 
 connect_audio() {
     if [[ -n $(jack_lsp | grep $WIN_PID) ]]
@@ -73,11 +61,11 @@ finish() {
     fi
 }
 
-start_recording
+eval $FFMPEG
 
 if [[ -n $JACK ]]
 then
-    connect_audio; finish
+    sleep 2; connect_audio; finish
 else
     finish
 fi
