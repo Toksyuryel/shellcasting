@@ -85,7 +85,7 @@ The following OPTIONS can be set when MODE is "start":
   -m, --mute            Don't try to record audio.
   -q, --quality N       Specify the video quality. (Default: 10)
   -v, --voice SOURCE    Record from microphone SOURCE.
-  
+
 The following VARIABLES are available:
   RECDIR    Where to save the recording. (Default: ~/video/new)
   LOGDIR    Where to save the output produced by ffmpeg. (Default: ~/log)

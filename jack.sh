@@ -54,15 +54,15 @@ jack_restart() {
 }
 
 usage() {
-    echo " Usage: $(basename $0) [ start | stop | status | restart ]
+    echo "Usage: $(basename $0) [ start | stop | status | restart ]
 
- start       starts the JACK server (synonym: on)
- stop        stops the JACK server (synonym: off)
- status      tells whether the JACK server is running
- restart     stops the JACK server, then starts it again
+start       starts the JACK server (synonym: on)
+stop        stops the JACK server (synonym: off)
+status      tells whether the JACK server is running
+restart     stops the JACK server, then starts it again
 
- ASOUNDRC is the location of your .asoundrc file (default: ~/.asoundrc-JACK)
- LOGDIR is the directory the JACK server will log to (default: ~/log) (will be created if it doesn't exist)"
+ASOUNDRC is the location of your .asoundrc file (default: ~/.asoundrc-JACK)
+LOGDIR is the directory the JACK server will log to (default: ~/log) (will be created if it doesn't exist)"
 }
 
 case "$1" in
