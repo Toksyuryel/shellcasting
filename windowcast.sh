@@ -1,7 +1,7 @@
 #!/bin/sh
 
 notify() {
-    [[ -t 0 ]] && echo $1 || xmessage -timeout 5 $1
+    [[ -t 0 ]] && echo -e $1 || xmessage -timeout 5 $1
 }
 
 die() {
@@ -19,8 +19,13 @@ QUALITY=10
 
 INFO=$(xwininfo)
 WIN_GEO=$(echo $INFO | grep -oEe 'geometry [0-9]+x[0-9]+' | grep -oEe '[0-9]+x[0-9]+')
-WIN_XY=$(echo $INFO | grep -oEe 'Corners:\s+\+[0-9]+\+[0-9]+' | grep -oEe '[0-9]+\+[0-9]+' | sed -e 's/\+/,/' )
-WIN_PID=$(xprop -id `echo $INFO | grep -oEe 'Window id: [0-9]x[0-9]+++++' | cut -d ' ' -f 3` | grep PID | cut -d "=" -f 2 | cut -d " " -f 2)
+WIN_XY=$(echo $INFO | grep -oEe 'Corners:\s+\+[0-9]+\+[0-9]+' | grep -oEe '[0-9]+\+[0-9]+' | sed -e 's/\+/,/')
+
+if [[ -z $WIN_PID ]]
+then
+    WIN_ID=$(echo $INFO | grep -oEe 'Window id: 0x[0-f]*' | grep -oEe '0x[0-f]*')
+    WIN_PID=$(xprop -id $WIN_ID | grep -oEe 'PID\(CARDINAL\) = [0-9]*' | grep -oEe '[0-9]*') || die "FATAL ERROR: application does not set _NET_WM_PID.\nPlease manually set WIN_PID and try again."
+fi
 
 start_recording() {
     if [[ -n $(jack_lsp | grep $WIN_PID) ]]

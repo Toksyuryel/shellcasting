@@ -8,8 +8,8 @@ die() {
     notify "$1"; exit 1
 }
 
-ASOUNDRC=$HOME/.asoundrc-JACK
-LOGDIR=$HOME/log
+[[ -z $ASOUNDRC ]] && ASOUNDRC=$HOME/.asoundrc-JACK
+[[ -z $LOGDIR ]] && LOGDIR=$HOME/log
 
 jack_on() {
     [[ -n $(pgrep jackd) ]] && die "JACK is already running"
@@ -61,9 +61,8 @@ usage() {
  status      tells whether the JACK server is running
  restart     stops the JACK server, then starts it again
 
- ASOUNDRC is the location of your .asoundrc file (default: $ASOUNDRC)
- LOGDIR is the directory the JACK server will log to (default: $LOGDIR) (will be created if it doesn't exist)
- (these settings can be changed by editing this script)"
+ ASOUNDRC is the location of your .asoundrc file (default: ~/.asoundrc-JACK)
+ LOGDIR is the directory the JACK server will log to (default: ~/log) (will be created if it doesn't exist)"
 }
 
 case "$1" in
