@@ -34,7 +34,7 @@ jack_off() {
     [[ -z $(pgrep jackd) ]] && die "JACK is not running"
     [[ -L $HOME/.asoundrc ]] || die "~/.asoundrc is not a symbolic link"
 
-    pkill -15 jackd
+    pkill -2 jackd
     rm -f $HOME/.asoundrc
 }
 

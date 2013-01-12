@@ -8,7 +8,8 @@ die() {
     notify "$1"; exit 1
 }
 
-[[ -n $(pgrep ffmpeg) ]] && die "ffmpeg is already running!"
+[[ -z $PIDFILE ]] && PIDFILE="/var/run/$(basename $0)-ffmpeg.pid"
+[[ -e $PIDFILE ]] && die "$(basename $0) was closed improperly.\nPlease verify that ffmpeg is not currently recording, then remove $PIDFILE."
 
 [[ -z $RECDIR ]] && RECDIR=$HOME/video/new
 [[ -z $LOGDIR ]] && LOGDIR=$HOME/log
@@ -52,16 +53,19 @@ finish() {
     if [[ -t 0 ]]
     then
         read -p "now recording (press enter to stop)"
-        pkill -15 ffmpeg
+        kill -2 $(echo $PIDFILE)
+        rm -f $PIDFILE
         exit 0
     else
         xmessage -buttons stop:0 "recording in progress"
-        pkill -15 ffmpeg
+        kill -2 $(echo $PIDFILE)
+        rm -f $PIDFILE
         exit 0
     fi
 }
 
 eval $FFMPEG
+echo $! > $PIDFILE
 
 if [[ -n $JACK ]]
 then
