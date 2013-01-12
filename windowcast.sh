@@ -20,7 +20,7 @@ QUALITY=10
 INFO=$(xwininfo)
 WIN_GEO=$(echo $INFO | grep -oEe 'geometry [0-9]+x[0-9]+' | grep -oEe '[0-9]+x[0-9]+')
 WIN_XY=$(echo $INFO | grep -oEe 'Corners:\s+\+[0-9]+\+[0-9]+' | grep -oEe '[0-9]+\+[0-9]+' | sed -e 's/\+/,/' )
-WIN_PID=$(xprop -id `echo $INFO | grep "Window id" | cut -d " " -f 4` | grep PID | cut -d "=" -f 2 | cut -d " " -f 2)
+WIN_PID=$(xprop -id `echo $INFO | grep -oEe 'Window id: [0-9]x[0-9]+++++' | cut -d ' ' -f 3` | grep PID | cut -d "=" -f 2 | cut -d " " -f 2)
 
 start_recording() {
     if [[ -n $(jack_lsp | grep $WIN_PID) ]]
