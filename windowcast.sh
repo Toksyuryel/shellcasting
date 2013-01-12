@@ -20,21 +20,30 @@ die() {
 INFO=$(xwininfo)
 WIN_GEO=$(echo $INFO | grep -oEe 'geometry [0-9]+x[0-9]+' | grep -oEe '[0-9]+x[0-9]+')
 WIN_XY=$(echo $INFO | grep -oEe 'Corners:\s+\+[0-9]+\+[0-9]+' | grep -oEe '[0-9]+\+[0-9]+' | sed -e 's/\+/,/')
+JACK=$(pgrep jackd)
 
-if [[ -z $WIN_PID ]]
+if [[ -z $WIN_PID ]] && [[ -n $JACK ]]
 then
     WIN_ID=$(echo $INFO | grep -oEe 'Window id: 0x[0-f]*' | grep -oEe '0x[0-f]*')
     WIN_PID=$(xprop -id $WIN_ID | grep -oEe 'PID\(CARDINAL\) = [0-9]*' | grep -oEe '[0-9]*') || die "FATAL ERROR: application does not set _NET_WM_PID.\nPlease manually set WIN_PID and try again."
 fi
 
 start_recording() {
-    if [[ -n $(jack_lsp | grep $WIN_PID) ]]
+    if [[ -n $JACK ]]
     then
-        ffmpeg \
-            -f alsa -ac $MICCHANNELS -i $MICPORT \
-            -f jack -i ffmpeg \
-            -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
-            -vcodec libx264 -preset ultrafast -crf $QUALITY -y -map 0 -map 1 -map 2 $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
+        if [[ -n $(jack_lsp | grep $WIN_PID) ]]
+        then
+            ffmpeg \
+                -f alsa -ac $MICCHANNELS -i $MICPORT \
+                -f jack -i ffmpeg \
+                -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
+                -vcodec libx264 -preset ultrafast -crf $QUALITY -y -map 0 -map 1 -map 2 $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
+        else
+            ffmpeg \
+                -f alsa -ac $MICCHANNELS -i $MICPORT \
+                -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
+                -vcodec libx264 -preset ultrafast -crf $QUALITY -y $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
+        fi
     else
         ffmpeg \
             -f alsa -ac $MICCHANNELS -i $MICPORT \
@@ -64,4 +73,11 @@ finish() {
     fi
 }
 
-start_recording; sleep 2s; connect_audio; finish
+start_recording
+
+if [[ -n $JACK ]]
+then
+    connect_audio; finish
+else
+    finish
+fi
