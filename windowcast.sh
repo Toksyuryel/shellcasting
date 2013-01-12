@@ -10,12 +10,12 @@ die() {
 
 [[ -n $(pgrep ffmpeg) ]] && die "ffmpeg is already running!"
 
-RECDIR=$HOME/video/new
-LOGDIR=$HOME/log
-MIC="hw:1,0"
-MICCHANNELS=1
-FPS=30
-QUALITY=10
+[[ -z $RECDIR ]] && RECDIR=$HOME/video/new
+[[ -z $LOGDIR ]] && LOGDIR=$HOME/log
+[[ -z $MICPORT ]] && MIC="hw:1,0"
+[[ -z $MICCHANNELS ]] && MICCHANNELS=1
+[[ -z $FPS ]] && FPS=30
+[[ -z $QUALITY ]] && QUALITY=10
 
 INFO=$(xwininfo)
 WIN_GEO=$(echo $INFO | grep -oEe 'geometry [0-9]+x[0-9]+' | grep -oEe '[0-9]+x[0-9]+')
@@ -31,13 +31,13 @@ start_recording() {
     if [[ -n $(jack_lsp | grep $WIN_PID) ]]
     then
         ffmpeg \
-            -f alsa -ac $MICCHANNELS -i $MIC \
+            -f alsa -ac $MICCHANNELS -i $MICPORT \
             -f jack -i ffmpeg \
             -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
             -vcodec libx264 -preset ultrafast -crf $QUALITY -y -map 0 -map 1 -map 2 $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
     else
         ffmpeg \
-            -f alsa -ac $MICCHANNELS -i $MIC \
+            -f alsa -ac $MICCHANNELS -i $MICPORT \
             -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY \
             -vcodec libx264 -preset ultrafast -crf $QUALITY -y $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &
     fi
