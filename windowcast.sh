@@ -30,7 +30,7 @@ start_recording() {
     FFMPEG="ffmpeg"
     [[ -n $MICSOURCE ]] && FFMPEG="$FFMPEG -f alsa -ac $MICCHANNELS -i $MICSOURCE"
     [[ -z $MUTE ]] && FFMPEG="$FFMPEG -f jack -i ffmpeg"
-    FFMPEG="$FFMPEG -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY -vcodec libx264 -preset ultrafast -crf $QUALITY -y"
+    FFMPEG="$FFMPEG -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY -vcodec libx264 -preset ultrafast -async 1 -crf $QUALITY -y"
     if [[ -n $MICSOURCE ]] && [[ -z $MUTE ]]
     then
         FFMPEG="$FFMPEG -map 0 -map 1 -map 2"
@@ -77,7 +77,7 @@ MODE can be one of:
   stop      Stop recording.
   status    Check if you are (still) recording.
 
-The following OPTIONS can be set when MODE is "start":
+The following OPTIONS can be set when MODE is \"start\":
   -c, --channels N      Specify the number of audio channels output
                           by your microphone. (Default: 2)
   -f, --fps N             Specify the fps of the video. (Default: 30)
