@@ -30,7 +30,7 @@ start_recording() {
     FFMPEG="ffmpeg"
     [[ -n $MICSOURCE ]] && FFMPEG="$FFMPEG -f alsa -ac $MICCHANNELS -i $MICSOURCE"
     [[ -z $MUTE ]] && FFMPEG="$FFMPEG -f jack -i ffmpeg"
-    FFMPEG="$FFMPEG -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY -vcodec libx264 -preset ultrafast -async 1 -crf $QUALITY -y"
+    FFMPEG="$FFMPEG -f x11grab -r $FPS -s $WIN_GEO -i :0.0+$WIN_XY -vcodec libx264 -preset ultrafast -crf $QUALITY -y"
     if [[ -n $MICSOURCE ]] && [[ -z $MUTE ]]
     then
         FFMPEG="$FFMPEG -map 0 -map 1 -map 2"
