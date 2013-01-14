@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 notify() {
     [[ -t 0 ]] && echo $1 || xmessage -timeout 5 $1
