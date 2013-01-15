@@ -58,7 +58,9 @@ start_recording() {
 stop_recording() {
     kill -2 $(cat $PIDFILE)
     rm -f $PIDFILE
-    exit 1
+    echo "Recording stopped."
+    post_process || echo "Post-processing is not required."
+    exit 0
 }
 
 check_recording() {
@@ -66,6 +68,16 @@ check_recording() {
     [[ -n $(echo $(pgrep ffmpeg) | grep $(cat $PIDFILE)) ]] || die "Recording has crashed or otherwise failed. Log follows:\n\n`cat $LOGDIR/ffmpeg.log`"
     echo "Recording is in progress."
     exit 0
+}
+
+post() {
+    [[ $(ffprobe -i $RECDIR/rec.mkv -show_streams -loglevel quiet | grep -c index) -eq 3 ]] || return 1
+    ffmpeg -i lavfi -i "amovie=$RECDIR/rec.mkv:si=1,volume=-8dB" -y $RECDIR/audio.flac &>> $LOGDIR/ffmpeg.log
+    ffmpeg -i $RECDIR/rec.mkv -map 0:0 -y $RECDIR/mic.flac &>> $LOGDIR/ffmpeg.log
+    sox -m $RECDIR/mic.flac $RECDIR/audio.flac $RECDIR/mixedaudio.flac
+    ffmpeg -i $RECDIR/mixedaudio.flac -i $RECDIR/rec.mkv -map 0 -map 1:2 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
+    rm -f $RECDIR/{mic,audio,mixedaudio}.flac
+    echo "Post-processing complete."
 }
 
 usage() {
