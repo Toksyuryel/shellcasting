@@ -10,7 +10,7 @@ die() {
 
 start_recording() {
     [[ -n $FPS ]] || FPS=30
-    [[ -n $QUALITY ]] || QUALITY=10
+    [[ -n $QUALITY ]] || QUALITY=23
     [[ -n $(pgrep jackd) ]] || MUTE=1
     [[ -n $MICCHANNELS ]] || MICCHANNELS=2
     echo "Select the window to record with your mouse."
@@ -94,7 +94,8 @@ The following OPTIONS can be set when MODE is \"start\":
                           by your microphone. (Default: 2)
   -f, --fps N             Specify the fps of the video. (Default: 30)
   -m, --mute            Don't try to record audio.
-  -q, --quality N       Specify the video quality. (Default: 10)
+  -q, --quality N       Specify the video quality. (Default: 23)
+                          Lower values = higher quality.
   -v, --voice SOURCE    Record from microphone SOURCE.
 
 The following VARIABLES are available:
