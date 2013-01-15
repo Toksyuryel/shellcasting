@@ -15,6 +15,7 @@ Currently, we depend on the following software packages:
     * `FFmpeg <http://ffmpeg.org">`
     * `x264 <http://www.videolan.org/developers/x264.html>`
     * `alsa and the alsa-jack plugin <http://alsa-project.org/>`
+    * `SoX <http://sox.sourceforge.net/>`
     * `xwininfo and xprop <http://xorg.freedesktop.org/>`
 
 More will probably be added as the project progresses.
