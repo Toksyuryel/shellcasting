@@ -47,8 +47,8 @@ start_recording() {
         do
             sleep 1
         done
-        jack_connect alsa-jack.jackP.$WIN_PID.0:out_000 ffmpeg:input_1
-        jack_connect alsa-jack.jackP.$WIN_PID.0:out_001 ffmpeg:input_2
+        jack_connect `jack_lsp $WIN_PID | grep out_000` ffmpeg:input_1
+        jack_connect `jack_lsp $WIN_PID | grep out_001` ffmpeg:input_2
     fi
 
     echo "Now recording."
