@@ -79,7 +79,7 @@ stop_recording() {
     kill -2 $(cat $PIDFILE)
     rm -f $PIDFILE
     if [[ -t 0 ]]
-        echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c black -O 4 -u white -d 10; echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c black -O 2 -u white -d 3
+        echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c green -O 4 -u black -d 10; echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c green -O 2 -u black -d 3
     then
     else
         echo "Recording stopped."
