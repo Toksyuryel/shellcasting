@@ -16,8 +16,9 @@ Currently, we depend on the following software packages:
     * `x264 <http://www.videolan.org/developers/x264.html>`
     * `alsa and the alsa-jack plugin <http://alsa-project.org/>`
     * `SoX <http://sox.sourceforge.net/>`
-    * `xwininfo and xprop <http://xorg.freedesktop.org/>`
+    * `xwininfo, xdpyinfo, and xprop <http://xorg.freedesktop.org/>`
     * `xosd <http://sourceforge.net/projects/libxosd/>`
+    * `jack_capture <http://www.notam02.no/arkiv/src>`
 
 More will probably be added as the project progresses.
 
@@ -27,6 +28,12 @@ windowcast.sh
 This is the main script, used for recording an application window. The design
 allows one to simply bind keys to starting and stopping the recording via the
 window manager for quick and easy access.
+
+screencast.sh
+-------------
+
+A modification of windowcash.sh, used for recording the entire screen as well as
+all system audio.
 
 jack.sh
 -------
