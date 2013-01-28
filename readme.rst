@@ -17,6 +17,7 @@ Currently, we depend on the following software packages:
     * `alsa and the alsa-jack plugin <http://alsa-project.org/>`
     * `SoX <http://sox.sourceforge.net/>`
     * `xwininfo and xprop <http://xorg.freedesktop.org/>`
+    * `xosd <http://sourceforge.net/projects/libxosd/>`
 
 More will probably be added as the project progresses.
 

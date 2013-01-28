@@ -1,8 +1,15 @@
 #!/bin/bash
 
-die() {
-    echo -e "$1"; exit 1
-}
+if [[ -t 0 ]]
+then
+    die() {
+        echo -e "$1"; exit 1
+    }
+else
+    die() {
+        echo -e "$1" | osd_cat -p bottom -A right -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c white -O 2 -u black -d 15; exit 1
+    }
+fi
 
 [[ -n $PIDFILE ]] || PIDFILE="$HOME/run/$(basename $0)-ffmpeg.pid"
 [[ -n $LOGDIR ]] || LOGDIR="$HOME/log"
@@ -59,21 +66,31 @@ start_recording() {
         jack_connect `jack_lsp $WIN_PID | grep out_001` ffmpeg:input_2
     fi
 
-    echo "Now recording."
+    if [[ -t 0 ]]
+    then
+        echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c red -O 4 -u black -d 10; echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c red -O 2 -u black -d 3
+    else
+        echo "Now recording."
+    fi
     exit 0
 }
 
 stop_recording() {
     kill -2 $(cat $PIDFILE)
     rm -f $PIDFILE
-    echo "Recording stopped."
+    if [[ -t 0 ]]
+        echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c black -O 4 -u white -d 10; echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c black -O 2 -u white -d 3
+    then
+    else
+        echo "Recording stopped."
+    fi
     post_process || echo "Post-processing is not required."
     exit 0
 }
 
 check_recording() {
     [[ -e $PIDFILE ]] || die "Recording not in progress."
-    [[ -n $(echo $(pgrep ffmpeg) | grep $(cat $PIDFILE)) ]] || die "Recording has crashed or otherwise failed. Log follows:\n\n`cat $LOGDIR/ffmpeg.log`"
+    [[ -n $(echo $(pgrep ffmpeg) | grep $(cat $PIDFILE)) ]] || die "Recording has crashed or otherwise failed.\nLog at $LOGDIR/ffmpeg.log"
     echo "Recording is in progress."
     exit 0
 }
