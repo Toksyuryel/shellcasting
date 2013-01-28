@@ -25,7 +25,15 @@ start_recording() {
     then
         WIN_ID=$(echo $INFO | grep -oEe 'Window id: 0x[0-f]*' | grep -oEe '0x[0-f]*')
         WIN_PID=$(xprop -id $WIN_ID | grep -oEe 'PID\(CARDINAL\) = [0-9]*' | grep -oEe '[0-9]*') || die "FATAL ERROR: application does not set _NET_WM_PID.\nPlease bug its developer, manually set WIN_PID and try again."
-        [[ $(jack_lsp | grep "$WIN_PID") ]] || MUTE=1
+        if [[ -z $(jack_lsp | grep "$WIN_PID") ]]
+        then
+            if [[ "$(cat /proc/$WIN_PID/comm)" = "explorer.exe" ]]
+            then
+                die "FATAL ERROR: WINE application being run in virtual desktop mode.\nPlease set WIN_PID manually and try again."
+            else
+                MUTE=1
+            fi
+        fi
     fi
     FFMPEG="ffmpeg"
     [[ -n $MICSOURCE ]] && FFMPEG="$FFMPEG -f alsa -ac $MICCHANNELS -i $MICSOURCE"
