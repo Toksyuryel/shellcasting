@@ -68,9 +68,9 @@ start_recording() {
 
     if [[ -t 0 ]]
     then
-        echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c red -O 4 -u black -d 10; echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c red -O 2 -u black -d 3
-    else
         echo "Now recording."
+    else
+        echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c red -O 4 -u black -d 10; echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c red -O 2 -u black -d 3
     fi
     exit 0
 }
@@ -80,9 +80,9 @@ stop_recording() {
     rm -f $PIDFILE
     if [[ -t 0 ]]
     then
-        echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c green -O 4 -u black -d 10; echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c green -O 2 -u black -d 3
-    else
         echo "Recording stopped."
+    else
+        echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c green -O 4 -u black -d 10; echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c green -O 2 -u black -d 3
     fi
     post_process || echo "Post-processing is not required."
     exit 0
