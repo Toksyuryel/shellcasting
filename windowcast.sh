@@ -74,6 +74,11 @@ post_process() {
     [[ $(ffprobe -i $RECDIR/rec.mkv -show_streams -loglevel quiet | grep -c index) -eq 3 ]] || return 1
     ffmpeg -f lavfi -i "amovie=$RECDIR/rec.mkv:si=1,volume=-8dB" -y $RECDIR/audio.flac &>> $LOGDIR/ffmpeg.log
     ffmpeg -i $RECDIR/rec.mkv -map 0:0 -y $RECDIR/mic.flac &>> $LOGDIR/ffmpeg.log
+    if [[ $(ffprobe -i $RECDIR/mic.flac -show_streams -loglevel quiet | grep channels | grep -oEe '[0-9]') -eq 1 ]]
+    then
+        sox -M $RECDIR/mic.flac $RECDIR/mic.flac $RECDIR/stereomic.flac
+        mv $RECDIR/stereomic.flac $RECDIR/mic.flac
+    fi
     sox --norm -m $RECDIR/mic.flac $RECDIR/audio.flac $RECDIR/mixedaudio.flac
     ffmpeg -i $RECDIR/mixedaudio.flac -i $RECDIR/rec.mkv -map 0 -map 1:2 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
     rm -f $RECDIR/{mic,audio,mixedaudio}.flac
