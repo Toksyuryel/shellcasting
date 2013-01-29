@@ -75,10 +75,12 @@ post_process() {
         ffmpeg -i $RECDIR/rec.mkv -map 0:0 -y $RECDIR/mic.flac &>> $LOGDIR/ffmpeg.log
         if [[ $(ffprobe -i $RECDIR/mic.flac -show_streams -loglevel quiet | grep channels | grep -oEe '[0-9]') -eq 1 ]]
         then
-            sox -M $RECDIR/mic.flac $RECDIR/mic.flac $RECDIR/stereomic.flac || die "Failed to transform mic audio from mono to stereo."
+            [[ -z $DEBUG ]] || DEBUG="-V"
+            sox -M $DEBUG $RECDIR/mic.flac $RECDIR/mic.flac $RECDIR/stereomic.flac || die "Failed to transform mic audio from mono to stereo."
             mv $RECDIR/stereomic.flac $RECDIR/mic.flac
         fi
-        sox --norm -m $RECDIR/mic.flac $RECDIR/audio.flac $RECDIR/mixedaudio.flac || die "Failed to mix mic audio with system audio."
+        [[ -z $DEBUG ]] || DEBUG="-V"
+        sox --norm -m $DEBUG $RECDIR/mic.flac $RECDIR/audio.flac $RECDIR/mixedaudio.flac || die "Failed to mix mic audio with system audio."
         ffmpeg -i $RECDIR/mixedaudio.flac -i $RECDIR/rec.mkv -map 0 -map 1:2 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
         rm -f $RECDIR/{mic,audio,mixedaudio}.flac
     else
