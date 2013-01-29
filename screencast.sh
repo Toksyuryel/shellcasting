@@ -79,10 +79,10 @@ post_process() {
             mv $RECDIR/stereomic.flac $RECDIR/mic.flac
         fi
         sox --norm -m $RECDIR/mic.flac $RECDIR/audio.flac $RECDIR/mixedaudio.flac || die "Failed to mix mic audio with system audio."
-        ffmpeg -i $RECDIR/mixedaudio.flac -i $RECDIR/rec.mkv -map 0 -map 1:2 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
+        ffmpeg -i $RECDIR/mixedaudio.flac -i $RECDIR/rec.mkv -map 0 -map 1:0 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
         rm -f $RECDIR/{mic,audio,mixedaudio}.flac
     else
-        ffmpeg -i $RECDIR/audio.flac -i $RECDIR/rec.mkv -map 0 -map 1 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
+        ffmpeg -i $RECDIR/audio.flac -i $RECDIR/rec.mkv -map 0 -map 1:0 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
         rm -f $RECDIR/audio.flac
     fi
     echo "Post-processing complete."
