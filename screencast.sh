@@ -124,7 +124,7 @@ stop_recording() {
     then
         rm -f $VIDEOPID
     fi
-    if [[ -n $VOICECHEK ]]
+    if [[ -n $VOICECHECK ]]
     then
         kill -2 $(cat "$VOICEPID") && rm -f $VOICEPID
     elif [[ -e $VOICEPID ]]
