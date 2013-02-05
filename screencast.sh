@@ -5,7 +5,7 @@ then
     alias realpath="readlink -f"
 fi
 PATH=$PATH:$(dirname $(realpath $0))
-source common.sh
+source common.sh || exit 1
 [[ -n $DISPLAY ]] || die "And just what do you think you're trying to do?"
 depend jackd ffmpeg jack_capture sox xwininfo xdpyinfo osd_cat
 config
