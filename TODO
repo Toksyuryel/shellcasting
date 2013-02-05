@@ -1,0 +1,8 @@
+* Add support for more audio recording backends
+* Add support for ffmpeg's fbdev input device
+* Overhaul jack.sh to rely on common.sh
+* More post-processing options
+* More sanity checks
+* Fewer bugs
+* Cleaner code
+* Ponies
