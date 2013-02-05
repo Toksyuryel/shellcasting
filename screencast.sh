@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source common.sh
+[[ -n $DISPLAY ]] || die "And just what do you think you're trying to do?"
 depend jackd ffmpeg jack_capture sox xwininfo xdpyinfo osd_cat
 config
 
