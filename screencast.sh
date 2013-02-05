@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ ! $(which realpath) ]]
+then
+    alias realpath="readlink -f"
+fi
+PATH=$PATH:$(dirname $(realpath $0))
 source common.sh
 [[ -n $DISPLAY ]] || die "And just what do you think you're trying to do?"
 depend jackd ffmpeg jack_capture sox xwininfo xdpyinfo osd_cat
