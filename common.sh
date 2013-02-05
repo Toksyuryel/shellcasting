@@ -7,7 +7,7 @@ paged_echo() {
 }
 
 notify() {
-    [[ -t 0 ]] && echo -e "$@" || osd bottom right 200 white 2 black 5 "$@"
+    [[ -t 0 || -p /dev/stdin ]] && echo -e "$@" || osd bottom right 200 white 2 black 5 "$@"
 }
 
 die() {
