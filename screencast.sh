@@ -1,155 +1,437 @@
 #!/bin/bash
 
-if [[ -t 0 ]]
-then
-    die() {
-        echo -e "$1"; exit 1
-    }
-else
-    die() {
-        echo -e "$1" | osd_cat -p bottom -A right -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c white -O 2 -u black -d 15; exit 1
-    }
-fi
+source common.sh
+depend jackd ffmpeg jack_capture sox xwininfo xdpyinfo osd_cat
+config
 
-[[ -n $PIDPREFIX ]] || PIDPREFIX="$HOME/run/$(basename $0)"
-[[ -n $LOGDIR ]] || LOGDIR="$HOME/log"
-[[ -n $RECDIR ]] || RECDIR="$HOME/video/new"
+VIDEOPID=${PIDPREFIX}-ffmpeg-video.pid
+AUDIOPID=${PIDPREFIX}-jack_capture.pid
+VOICEPID=${PIDPREFIX}-ffmpeg-voice.pid
+VIDEOLOG=${LOGDIR}/ffmpeg-video.log
+VOICELOG=${LOGDIR}/ffmpeg-voice.log
+AUDIOLOG=${LOGDIR}/ffmpeg-audio.log
+POSTLOG=${LOGDIR}/ffmpeg-post.log
+RECDIR=${RECDIR:-${HOME}/video/new}
+[[ -d "$RECDIR" ]] || RECDIR=$PWD
+VIDEOFILE=${RECDIR}/video.mkv
+VOICEFILE=${RECDIR}/voice.wav
+AUDIOFILE=${RECDIR}/audio.wav
+POSTFILE=${RECDIR}/processed
 
 start_recording() {
-    [[ -n $FPS ]] || FPS=30
-    [[ -n $QUALITY ]] || QUALITY=23
+    FPS=${FPS:-30}
+    QUALITY=${QUALITY:-23}
+    MICCHANNELS=${MICCHANNELS:-2}
+
+    if [[ -z $WINDOW ]]
+    then
+        GEO=$(xdpyinfo -display $DISPLAY | grep -oEe 'dimensions:\s+[0-9]+x[0-9]+' | grep -oEe '[0-9]+x[0-9]+')
+        VIDEOOPTS=(-f x11grab -r $FPS -s $GEO -i $DISPLAY)
+    else
+        INFO=$(xwininfo)
+        WIN_WIDTH="$(echo "$INFO" | grep -oEe 'Width: [0-9]*' | grep -oEe '[0-9]*')"
+        [[ $(( $WIN_WIDTH % 2 )) -eq 0 ]] || WIN_WIDTH=$(( $WIN_WIDTH + 1 ))
+        WIN_HEIGHT="$(echo "$INFO" | grep -oEe 'Height: [0-9]*' | grep -oEe '[0-9]*')"
+        [[ $(( $WIN_HEIGHT % 2 )) -eq 0 ]] || WIN_HEIGHT=$(( $WIN_HEIGHT + 1 ))
+        GEO="${WIN_WIDTH}x${WIN_HEIGHT}"
+        OFFSET="$(echo $INFO | grep -oEe 'Corners:\s+\+[0-9]+\+[0-9]+' | grep -oEe '[0-9]+\+[0-9]+' | sed -e 's/\+/,/')"
+        VIDEOOPTS=(-f x11grab -show_region 1 -r $FPS -s $GEO -i ${DISPLAY}+${OFFSET})
+    fi
+
+    VIDEOOPTS+=(-vcodec libx264 -preset ultrafast -crf $QUALITY -y)
+
+    ffmpeg "${VIDEOOPTS[@]}" $VIDEOFILE > $VIDEOLOG 2>&1 &
+    echo "$!" > "$VIDEOPID"
+
+    if [[ -n $MICSOURCE ]]
+    then
+        VOICEOPTS=(-f alsa -ac $MICCHANNELS -i $MICSOURCE)
+        VOICEOPTS+=(-y)
+        ffmpeg "${VOICEOPTS[@]}" $VOICEFILE > $VOICELOG 2>&1 &
+        echo "$!" > "$VOICEPID"
+    fi
+
     [[ -n $(pgrep jackd) ]] || MUTE=1
-    [[ -n $MICCHANNELS ]] || MICCHANNELS=2
-    GEO=$(xdpyinfo -display :0.0 | grep -oEe 'dimensions:\s+[0-9]+x[0-9]+' | grep -oEe '[0-9]+x[0-9]+')
-    FFMPEG="ffmpeg"
-    [[ -n $MICSOURCE ]] && FFMPEG="$FFMPEG -f alsa -ac $MICCHANNELS -i $MICSOURCE"
-    FFMPEG="$FFMPEG -f x11grab -r $FPS -s $GEO -i :0.0 -vcodec libx264 -preset ultrafast -crf $QUALITY -y $RECDIR/rec.mkv &> $LOGDIR/ffmpeg.log &"
-
-    [[ -z $DEBUG ]] || echo $FFMPEG
-    eval $FFMPEG
-    echo "$!" > $PIDPREFIX-ffmpeg.pid
-
     if [[ -z $MUTE ]]
     then
-        jack_capture --daemon $RECDIR/audio.wav &
-        echo "$!" > $PIDPREFIX-jack_capture.pid
+        jack_capture --daemon $AUDIOFILE &
+        echo "$!" > "$AUDIOPID"
     fi
 
     if [[ -t 0 ]]
     then
-        echo "Now recording."
+        echo "Recording now in progress."
     else
-        echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c red -O 4 -u black -d 10; echo "● REC" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c red -O 2 -u black -d 3
+        osd top 48 left 200 red 4 black 10 "● REC"; osd top 48 left 100 red 2 black 3 "● REC"
     fi
+
     exit 0
 }
 
-stop_recording() {
-    kill -2 $(cat $PIDPREFIX-ffmpeg.pid) && rm -f $PIDPREFIX-ffmpeg.pid
-    if [[ -e $PIDPREFIX-jack_capture.pid ]]
+check_recording() {
+    if [[ -e $VIDEOPID ]]
     then
-        kill -2 $(cat $PIDPREFIX-jack_capture.pid) && rm -f $PIDPREFIX-jack_capture.pid
+        if [[ -n $(echo $(pgrep ffmpeg) | grep -f "$VIDEOPID") ]]
+        then
+            echo "Video is recording"
+            VIDEOCHECK=0
+        else
+            echo "Video recording has crashed"
+        fi
+    else
+        echo "You are not recording"
+    fi
+
+    if [[ -e $VOICEPID ]]
+    then
+        if [[ -n $(echo $(pgrep ffmpeg) | grep -f "$VOICEPID") ]]
+        then
+            echo "Voice is recording"
+            VOICECHECK=0
+        else
+            echo "Voice recording has crashed"
+        fi
+    fi
+
+    if [[ -e $AUDIOPID ]]
+    then
+        if [[ -n $(echo $(pgrep jack_capture) | grep -f "$AUDIOPID") ]]
+        then
+            echo "Audio is recording"
+            AUDIOCHECK=0
+        else
+            echo "Audio recording has crashed"
+        fi
+    fi
+}
+
+stop_recording() {
+    check_recording > /dev/null
+    if [[ -z $VIDEOCHECK ]] && [[ -z $VOICECHEK ]] && [[ -z $AUDIOCHECK ]]
+    then
+        die "You aren't recording anything."
+    fi
+    if [[ -n $VIDEOCHECK ]]
+    then
+        kill -2 $(cat "$VIDEOPID") && rm -f $VIDEOPID
+    elif [[ -e $VIDEOPID ]]
+    then
+        rm -f $VIDEOPID
+    fi
+    if [[ -n $VOICECHEK ]]
+    then
+        kill -2 $(cat "$VOICEPID") && rm -f $VOICEPID
+    elif [[ -e $VOICEPID ]]
+    then
+        rm -f $VOICEPID
+    fi
+    if [[ -n $AUDIOCHECK ]]
+    then
+        kill -2 $(cat "$AUDIOPID") && rm -f $AUDIOPID
+    elif [[ -e $AUDIOPID ]]
+    then
+        rm -f $AUDIOPID
     fi
     if [[ -t 0 ]]
     then
         echo "Recording stopped."
     else
-        echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-200-*-*-*-*-*-* -c green -O 4 -u black -d 10; echo "■ STOP" | osd_cat -p top -o 48 -A left -f -*-fixed-*-*-*-*-*-100-*-*-*-*-*-* -c green -O 2 -u black -d 3
+        osd top 48 left 200 green 4 black 10 "■ STOP"; osd top 48 left 100 green 2 black 3 "■ STOP"
     fi
-    post_process || echo "Post-processing is not required."
-    exit 0
-}
-
-check_recording() {
-    [[ -e $PIDPREFIX-ffmpeg.pid ]] || die "Recording not in progress."
-    [[ -n $(echo $(pgrep ffmpeg) | grep $(cat $PIDPREFIX-ffmpeg.pid)) ]] || die "Recording has crashed or otherwise failed.\nLog at $LOGDIR/ffmpeg.log"
-    echo "Recording is in progress."
+    if [[ -n $POST ]]
+    then
+        $0 post "$@"
+    fi
     exit 0
 }
 
 post_process() {
-    [[ -e $RECDIR/audio.wav ]] || return 1
-    ffmpeg -f lavfi -i "amovie=$RECDIR/audio.wav,volume=-8dB" -y $RECDIR/audio.flac &>> $LOGDIR/ffmpeg.log
-    if [[ $(ffprobe -i $RECDIR/rec.mkv -show_streams -loglevel quiet | grep -c index) -eq 2 ]]
+    ACODEC=${ACODEC:-'libmp3lame'}
+    BITRATE=${BITRATE:-128000}
+    CONTAINER=${CONTAINER:-'mp4'}
+    VCODEC=${VCODEC:-'libx264'}
+
+    [[ -e $VIDEOFILE ]] || die "You haven't recorded anything."
+
+    notify "Processing..."
+
+    if [[ -e $VOICEFILE ]] && [[ $(ffprobe -i $VOICEFILE -show_streams -loglevel quiet | grep 'channels' | grep -oEe '[0-9]') -eq 1 ]]
     then
-        ffmpeg -i $RECDIR/rec.mkv -map 0:1 -y $RECDIR/mic.flac &>> $LOGDIR/ffmpeg.log
-        if [[ $(ffprobe -i $RECDIR/mic.flac -show_streams -loglevel quiet | grep channels | grep -oEe '[0-9]') -eq 1 ]]
-        then
-            sox -M $RECDIR/mic.flac $RECDIR/mic.flac $RECDIR/stereomic.flac || die "Failed to transform mic audio from mono to stereo."
-            mv $RECDIR/stereomic.flac $RECDIR/mic.flac
-        fi
-        sox --norm -m $RECDIR/mic.flac $RECDIR/audio.flac $RECDIR/mixedaudio.flac || die "Failed to mix mic audio with system audio."
-        ffmpeg -i $RECDIR/mixedaudio.flac -i $RECDIR/rec.mkv -map 0 -map 1:0 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
-        rm -f $RECDIR/{mic,audio,mixedaudio}.flac
-    else
-        ffmpeg -i $RECDIR/audio.flac -i $RECDIR/rec.mkv -map 0 -map 1:0 -acodec copy -vcodec copy -y $RECDIR/processed.mkv &>> $LOGDIR/ffmpeg.log
-        rm -f $RECDIR/audio.flac
+        notify "Converting mono voice data to stereo..."
+        sox -M $VOICEFILE $VOICEFILE ${RECDIR}/voice-fixed.wav || die "Internal error: failed to transform voice data from mono to stero."
+        VOICEFILE=${RECDIR}/voice-fixed.wav
     fi
-    echo "Post-processing complete."
+
+    if [[ -e $AUDIOFILE ]] && [[ -n $VOLUME ]]
+    then
+        notify "Adjusting audio volume..."
+        ffmpeg -f lavfi -i "amovie=${AUDIOFILE},volume=$VOLUME" -y ${RECDIR}/audio-quiet.wav > $AUDIOLOG 2>&1
+        AUDIOFILE=${RECDIR}/audio-quiet.wav
+    fi
+
+    if [[ -e $VOICEFILE ]] && [[ -e $AUDIOFILE ]]
+    then
+        notify "Mixing voice data with audio data..."
+        sox --norm -m $VOICEFILE $AUDIOFILE ${RECDIR}/audio-mixed.wav || die "Internal error: failed to mix voice data with audio data."
+        AUDIOFILE=${RECDIR}/audio-mixed.wav
+    elif [[ -e $VOICEFILE ]]
+    then
+        AUDIOFILE=$VOICEFILE
+    fi
+
+    TRANSCODEOPTS=(-i $VIDEOFILE)
+    [[ -z $AUDIOFILE ]] || TRANSCODEOPTS+=(-i $AUDIOFILE)
+    TRANSCODEOPTS+=(-vcodec $VCODEC)
+    [[ -z $AUDIOFILE ]] || TRANSCODEOPTS+=(-acodec $ACODEC -ab $BITRATE)
+    TRANSCODEOPTS+=(-y)
+
+    notify "Transcoding... (this may take a while)"
+    ffmpeg "${TRANSCODEOPTS[@]}" ${POSTFILE}.${CONTAINER} > $POSTLOG 2>&1
+    notify "Done."
+    exit 0
 }
 
 usage() {
-    echo "Usage: [VARIABLES...] $(basename $0) MODE [OPTIONS...]"
-    echo "Record audio and video from an application window.
+    echo "Usage: $(basename $0) MODE [OPTIONS...]"
+    echo "Record audio and video from your system.
 
 MODE can be one of:
   start     Begins a new recording.
-  stop      Stop recording.
+  stop      Finish recording.
   status    Check if you are (still) recording.
+  post      Do post-processing of a finished recording.
+
+The following OPTIONS can be set for any MODE:
+  --logdir DIR              Location to store log files. (Setting: LOGDIR)
+                              (Default: ~/log if it exists, otherwise
+                               the directory you ran the script from)
+  --piddir DIR              Location to store pid files. (Setting: PIDDIR)
+                              (Default: ~/.run if it exists, otherwise
+                               the directory you ran the script from)
+  --recdir DIR              Location to store recording data. (Setting: RECDIR)
+                              (Default: ~/video/new if it exists, otherwise
+                               the directory you ran the script from)
+  --settings PATH           Location of settings file. (Default: First try
+                               \$XDG_CONFIG_HOME if set, then try ~/.config -
+                               if either of these exist, look for
+                               $(basename $0).cfg under it. Otherwise, look for
+                               ~/.$(basename $0)rc)
+
+WARNING: options specified in the config file will override command line
+         options if they appear before --settings. It is recommend that this
+         option appear before all others on the command line if you are going
+         to specify it.
 
 The following OPTIONS can be set when MODE is \"start\":
-  -c, --channels N      Specify the number of audio channels output
-                          by your microphone. (Default: 2)
-  -f, --fps N             Specify the fps of the video. (Default: 30)
-  -m, --mute            Don't try to record audio.
-  -q, --quality N       Specify the video quality. (Default: 23)
-                          Lower values = higher quality.
-  -v, --voice SOURCE    Record from microphone SOURCE.
+  -c, --channels N          Specify number of audio channels output by your
+                              microphone. (Default: 2) (Setting: MICCHANNELS)
+  -f, --fps N               Specify video framerate. (Default: 2) (Setting: FPS)
+  -m, --mute                Don't try to record audio. (Setting: MUTE)
+  -q, --quality N           Specify crf value. Lower values raise quality.
+                              (Default: 23) (Setting: QUALITY)
+  -v, --voice SOURCE        Record from microphone SOURCE. (Setting: MICSOURCE)
+  -w, --window              Record from a window instead of the whole screen.
+                              (Select with the mouse) (Setting: WINDOW)
 
-The following VARIABLES are available:
-  RECDIR    Where to save the recording. (Default: ~/video/new)
-  LOGDIR    Where to save the output produced by ffmpeg. (Default: ~/log)
-  PIDPREFIX   Where to save the PID of each process once recording has
-              begun. (Default: ~/run/$(basename $0))"
+The following OPTIONS can be set when MODE is \"stop\":
+  -p, --post [OPTIONS...]   Automatically begin post-processing after stopping
+                              the recording. Remaining options will be passed
+                              along to the \"post\" MODE and are the same as
+                              those described below.
+
+The following OPTIONS can be set when MODE is \"post\":
+  -a, --acodec CODEC        Specify the audio codec to use.
+                              (Default: libmp3lame) (Setting: ACODEC)
+  -b, --bitrate N           Specify the audio bitrate.
+                              (Default: 128000) (Setting: BITRATE)
+  -c, --container CONTAINER Specify the container format to use. Ensure it
+                              agrees with your audio and video codecs.
+                              (Default: mp4) (Setting: CONTAINER)
+  -d, --volume [(+|-)NdB]   Adjust the volume of the system audio prior to
+                              mixing by the amount specified (If no amount is
+                              specified, defaults to -8dB) (Setting: VOLUME)
+  -v, --vcodec CODEC        Specify the video codec to use.
+                              (Default: libx264) (Setting: VCODEC)
+
+The format of the settings file is the same as any standard bash script."
+
     exit 1
 }
 
-case "$1" in
+common_options() {
+    case "$1" in
+        --logdir    )
+            shift
+            if [[ -d $1 ]]
+            then
+                LOGDIR="$1"
+            else
+                die "FATAL ERROR: $1 does not exist or is not a directory."
+            fi
+            ;;
+        --piddir    )
+            shift
+            if [[ -d $1 ]]
+            then
+                PIDDIR="$1"
+            else
+                die "FATAL ERROR: $1 does not exist or is not a directory."
+            fi
+            ;;
+        --recdir    )
+            shift
+            if [[ -d $1 ]]
+            then
+                RECDIR="$1"
+            else
+                die "FATAL ERROR: $1 does not exist or is not a directory."
+            fi
+            ;;
+        --settings  )
+            shift
+            if [[ -e $1 ]]
+            then
+                CONFIG="$1"
+                config
+            else
+                die "FATAL ERROR: $1 file not found."
+            fi
+            ;;
+        *           )
+            usage
+            ;;
+    esac
+}
+
+MODE="$1"
+shift
+case "$MODE" in
     start   )
-        [[ ! -e $PIDPREFIX-ffmpeg.pid ]] || die "You're already recording!"
-        shift
+        check_recording > /dev/null
+        if [[ -z $VIDEOCHECK ]] && [[ -z $VOICECHECK ]] && [[ -z $AUDIOCHECK ]]
+        then
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    -c | --channels     )
+                        shift
+                        [[ $1 -gt 0 ]] && MICCHANNELS=$1 || die "FATAL ERROR: MICCHANNELS must be at least 1."
+                        ;;
+                    -f | --fps          )
+                        shift
+                        [[ $1 -gt 0 ]] && FPS=$1 || die "FATAL ERROR: FPS must be at least 1."
+                        ;;
+                    -m | --mute         )
+                        MUTE=1
+                        ;;
+                    -q | --quality      )
+                        shift
+                        [[ $1 -gt 0 ]] && QUALITY=$1 || die "FATAL ERROR: QUALITY must be at least 1."
+                        ;;
+                    -v | --voice        )
+                        shift
+                        MICSOURCE="$1"
+                        ;;
+                    -w | --window       )
+                        WINDOW=1
+                        ;;
+                    *                   )
+                        common_options
+                        ;;
+                esac
+                shift
+            done
+            start_recording
+        else
+            die "You are already recording something."
+        fi
+        ;;
+    stop    )
         while [[ $# -gt 0 ]]; do
             case "$1" in
-                -c | --channels )
+                -p | --post     )
                     shift
-                    [[ $1 -gt 0 ]] && MICCHANNELS=$1 || die "Please select at least one audio channel for your microphone."
-                    ;;
-                -f | --fps      )
-                    shift
-                    [[ $1 -gt 0 ]] && FPS=$1 || die "Please set fps to at least 1."
-                    ;;
-                -m | --mute     )
-                    MUTE=1
-                    ;;
-                -q | --quality  )
-                    shift
-                    [[ $1 -gt 0 ]] && QUALITY=$1 || die "Please set quality to at least 1."
-                    ;;
-                -v | --voice    )
-                    shift
-                    MICSOURCE="$1"
+                    POST=1
+                    break
                     ;;
                 *               )
-                    usage;;
+                    common_options
+                    ;;
             esac
-        shift
+            shift
         done
-        start_recording;;
-    stop    )
-        [[ -e $PIDPREFIX-ffmpeg.pid ]] || die "You are not recording."
-        stop_recording;;
+        stop_recording
+        ;;
     status  )
-        check_recording;;
+        while [[ $# -gt 0 ]]; do
+            common_options
+            shift
+        done
+        check_recording
+        exit 0
+        ;;
+    post    )
+        check_recording > /dev/null
+        if [[ -z $VIDEOCHECK ]] && [[ -z $VOICECHECK ]] && [[ -z $AUDIOCHECK ]]
+        then
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    -a | --acodec       )
+                        shift
+                        if [[ -n $(ffmpeg -loglevel quiet -codecs | grep 'EA' | grep -Ee '\s'"$1"'\s') ]]
+                        then
+                            ACODEC="$1"
+                        else
+                            die "FATAL ERROR: Selected audio codec is unsupported by your version of ffmpeg."
+                        fi
+                        ;;
+                    -b | --bitrate      )
+                        shift
+                        if [[ $(( $1 % 1000 )) -eq 0 ]]
+                        then
+                            BITRATE=$1
+                        else
+                            die "FATAL ERROR: BITRATE must be a multiple of 1000."
+                        fi
+                        ;;
+                    -c | --container    )
+                        shift
+                        if [[ -n $1 ]] && [[ ! "$1" =~ '^-' ]]
+                        then
+                            CONTAINER="$1"
+                        else
+                            die "FATAL ERROR: You forgot to supply a CONTAINER."
+                        fi
+                        ;;
+                    -d | --volume       )
+                        if [[ -n $2 ]] && [[ "$2" =~ 'dB$' ]]
+                        then
+                            shift
+                            VOLUME="$1"
+                        else
+                            VOLUME="-8dB"
+                        fi
+                        ;;
+                    -v | --vcodec       )
+                        shift
+                        if [[ -n $(ffmpeg -loglevel quiet -codecs | grep 'EV' | grep -Ee '\s'"$1"'\s') ]]
+                        then
+                            VCODEC="$1"
+                        else
+                            die "FATAL ERROR: Selected video codec is unsupported by your version of ffmpeg."
+                        fi
+                        ;;
+                    *                   )
+                        common_options
+                        ;;
+                esac
+                shift
+            done
+            post_process
+        else
+            die "You are still recording."
+        fi
+        ;;
     *       )
-        usage;;
+        usage
+        ;;
 esac
