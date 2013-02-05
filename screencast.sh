@@ -198,8 +198,8 @@ post_process() {
 }
 
 usage() {
-    echo "Usage: $(basename $0) MODE [OPTIONS...]"
-    echo "Record audio and video from your system.
+    paged_echo "Usage: $(basename $0) MODE [OPTIONS...]
+Record audio and video from your system.
 
 MODE can be one of:
   start     Begins a new recording.
