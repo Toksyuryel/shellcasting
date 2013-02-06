@@ -265,42 +265,30 @@ The format of the settings file is the same as any standard bash script."
 }
 
 common_options() {
+    [[ $# -eq 2 ]] || usage
     case "$1" in
+        *dir      )
+            P="$(fixpath $2)"
+            [[ -d $P ]] || die "FATAL ERROR: $P does not exist or is not a directory."
+            ;;&
         --logdir    )
-            shift
-            if [[ -d $1 ]]
-            then
-                LOGDIR="$1"
-            else
-                die "FATAL ERROR: $1 does not exist or is not a directory."
-            fi
+            LOGDIR="$P"
             ;;
         --piddir    )
-            shift
-            if [[ -d $1 ]]
-            then
-                PIDDIR="$1"
-            else
-                die "FATAL ERROR: $1 does not exist or is not a directory."
-            fi
+            PIDDIR="$P"
             ;;
         --recdir    )
-            shift
-            if [[ -d $1 ]]
-            then
-                RECDIR="$1"
-            else
-                die "FATAL ERROR: $1 does not exist or is not a directory."
-            fi
+            RECDIR="$P"
             ;;
         --settings  )
-            shift
-            if [[ -r '$1' ]]
+            P="$(fixpath $2)"
+            [[ -z $DEBUG ]] || echo -e "P=$P\n2=$2"
+            if [[ -r $P ]]
             then
-                CONFIG="$1"
+                CONFIG="$P"
                 config
             else
-                die "FATAL ERROR: $1 file not found."
+                die "FATAL ERROR: $P file not found."
             fi
             ;;
         *           )
@@ -341,7 +329,8 @@ case "$MODE" in
                         WINDOW=1
                         ;;
                     *                   )
-                        common_options "$@"
+                        common_options "$1" "$2"
+                        shift
                         ;;
                 esac
                 shift
@@ -360,7 +349,8 @@ case "$MODE" in
                     break
                     ;;
                 *               )
-                    common_options "$@"
+                    common_options "$1" "$2"
+                    shift
                     ;;
             esac
             shift
@@ -369,8 +359,8 @@ case "$MODE" in
         ;;
     status  )
         while [[ $# -gt 0 ]]; do
-            common_options "$@"
-            shift
+            common_options "$1" "$2"
+            shift 2
         done
         check_recording
         exit 0
@@ -427,7 +417,8 @@ case "$MODE" in
                         fi
                         ;;
                     *                   )
-                        common_options "$@"
+                        common_options "$1" "$2"
+                        shift
                         ;;
                 esac
                 shift
