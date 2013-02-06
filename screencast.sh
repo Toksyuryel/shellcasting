@@ -154,7 +154,7 @@ stop_recording() {
     fi
     if [[ -n $POST ]]
     then
-        $0 post "$@"
+        post_process
     fi
     exit 0
 }
@@ -314,6 +314,61 @@ common_options() {
     esac
 }
 
+post_options() {
+    case "$1" in
+        -a | --acodec       )
+            if [[ -n $(ffmpeg -loglevel quiet -codecs | grep 'EA' | grep -Ee '\s'"$2"'\s') ]]
+            then
+                ACODEC="$2"
+            else
+                die "FATAL ERROR: Selected audio codec is unsupported by your version of ffmpeg."
+            fi
+            N=2
+            ;;
+        -b | --bitrate      )
+            if [[ $(( $2 % 1000 )) -eq 0 ]]
+            then
+                BITRATE=$2
+            else
+                die "FATAL ERROR: BITRATE must be a multiple of 1000."
+            fi
+            N=2
+            ;;
+        -c | --container    )
+            if [[ -n $2 ]] && [[ ! "$2" =~ '^-' ]]
+            then
+                CONTAINER="$2"
+            else
+                die "FATAL ERROR: You forgot to supply a CONTAINER."
+            fi
+            N=2
+            ;;
+        -d | --volume       )
+            if [[ -n $2 ]] && [[ "$2" =~ 'dB$' ]]
+            then
+                VOLUME="$2"
+                N=2
+            else
+                VOLUME="-8dB"
+                N=1
+            fi
+            ;;
+        -v | --vcodec       )
+            if [[ -n $(ffmpeg -loglevel quiet -codecs | grep 'EV' | grep -Ee '\s'"$2"'\s') ]]
+            then
+                VCODEC="$2"
+            else
+                die "FATAL ERROR: Selected video codec is unsupported by your version of ffmpeg."
+            fi
+            N=2
+            ;;
+        *                   )
+            common_options "$1" "$2"
+            N=2
+            ;;
+    esac
+}
+
 MODE="$1"
 shift
 case "$MODE" in
@@ -363,6 +418,10 @@ case "$MODE" in
                 -p | --post     )
                     shift
                     POST=1
+                    while [[ $# -gt 0 ]]; do
+                        post_options "$@"
+                        shift $N
+                    done
                     break
                     ;;
                 *               )
@@ -387,58 +446,8 @@ case "$MODE" in
         if [[ -z $VIDEOCHECK ]] && [[ -z $VOICECHECK ]] && [[ -z $AUDIOCHECK ]]
         then
             while [[ $# -gt 0 ]]; do
-                case "$1" in
-                    -a | --acodec       )
-                        shift
-                        if [[ -n $(ffmpeg -loglevel quiet -codecs | grep 'EA' | grep -Ee '\s'"$1"'\s') ]]
-                        then
-                            ACODEC="$1"
-                        else
-                            die "FATAL ERROR: Selected audio codec is unsupported by your version of ffmpeg."
-                        fi
-                        ;;
-                    -b | --bitrate      )
-                        shift
-                        if [[ $(( $1 % 1000 )) -eq 0 ]]
-                        then
-                            BITRATE=$1
-                        else
-                            die "FATAL ERROR: BITRATE must be a multiple of 1000."
-                        fi
-                        ;;
-                    -c | --container    )
-                        shift
-                        if [[ -n $1 ]] && [[ ! "$1" =~ '^-' ]]
-                        then
-                            CONTAINER="$1"
-                        else
-                            die "FATAL ERROR: You forgot to supply a CONTAINER."
-                        fi
-                        ;;
-                    -d | --volume       )
-                        if [[ -n $2 ]] && [[ "$2" =~ 'dB$' ]]
-                        then
-                            shift
-                            VOLUME="$1"
-                        else
-                            VOLUME="-8dB"
-                        fi
-                        ;;
-                    -v | --vcodec       )
-                        shift
-                        if [[ -n $(ffmpeg -loglevel quiet -codecs | grep 'EV' | grep -Ee '\s'"$1"'\s') ]]
-                        then
-                            VCODEC="$1"
-                        else
-                            die "FATAL ERROR: Selected video codec is unsupported by your version of ffmpeg."
-                        fi
-                        ;;
-                    *                   )
-                        common_options "$1" "$2"
-                        shift
-                        ;;
-                esac
-                shift
+                post_options "$@"
+                shift $N
             done
             post_process
         else
