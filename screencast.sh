@@ -231,7 +231,7 @@ WARNING: options specified in the config file will override command line
 The following OPTIONS can be set when MODE is \"start\":
   -c, --channels N          Specify number of audio channels output by your
                               microphone. (Default: 2) (Setting: MICCHANNELS)
-  -f, --fps N               Specify video framerate. (Default: 2) (Setting: FPS)
+  -f, --fps N               Specify video framerate. (Default: 30) (Setting: FPS)
   -m, --mute                Don't try to record audio. (Setting: MUTE)
   -q, --quality N           Specify crf value. Lower values raise quality.
                               (Default: 23) (Setting: QUALITY)
