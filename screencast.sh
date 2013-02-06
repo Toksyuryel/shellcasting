@@ -26,8 +26,9 @@ AUDIOFILE="${RECDIR}/audio.wav"
 POSTFILE="${RECDIR}/processed"
 
 clean_recdir() {
-    rm -f ${RECDIR}/video.mkv
+    rm -f ${RECDIR}/{video,video-transcode}.mkv
     rm -f ${RECDIR}/{voice,voice-fixed,audio,audio-quiet,audio-mixed}.wav
+    rm -f ${RECDIR}/audio-transcode.mka
 }
 
 start_recording() {
@@ -39,7 +40,7 @@ start_recording() {
     if [[ -z $WINDOW ]]
     then
         GEO=$(xdpyinfo -display $DISPLAY | grep -oEe 'dimensions:\s+[0-9]+x[0-9]+' | grep -oEe '[0-9]+x[0-9]+')
-        VIDEOOPTS=(-f x11grab -r $FPS -s $GEO -i $DISPLAY)
+        VIDEOOPTS=(-f x11grab -r $FPS -s $GEO -i "$DISPLAY")
     else
         INFO=$(xwininfo)
         WIN_WIDTH="$(echo "$INFO" | grep -oEe 'Width: [0-9]*' | grep -oEe '[0-9]*')"
@@ -48,26 +49,26 @@ start_recording() {
         [[ $(( $WIN_HEIGHT % 2 )) -eq 0 ]] || WIN_HEIGHT=$(( $WIN_HEIGHT + 1 ))
         GEO="${WIN_WIDTH}x${WIN_HEIGHT}"
         OFFSET="$(echo $INFO | grep -oEe 'Corners:\s+\+[0-9]+\+[0-9]+' | grep -oEe '[0-9]+\+[0-9]+' | sed -e 's/\+/,/')"
-        VIDEOOPTS=(-f x11grab -show_region 1 -r $FPS -s $GEO -i ${DISPLAY}+${OFFSET})
+        VIDEOOPTS=(-f x11grab -show_region 1 -r $FPS -s "$GEO" -i "${DISPLAY}+${OFFSET}")
     fi
 
     VIDEOOPTS+=(-vcodec libx264 -preset ultrafast -crf $QUALITY -y)
 
-    ffmpeg "${VIDEOOPTS[@]}" $VIDEOFILE > $VIDEOLOG 2>&1 &
+    ffmpeg "${VIDEOOPTS[@]}" "$VIDEOFILE" > "$VIDEOLOG" 2>&1 &
     echo "$!" > "$VIDEOPID"
 
     if [[ -n $MICSOURCE ]]
     then
-        VOICEOPTS=(-f alsa -ac $MICCHANNELS -i $MICSOURCE)
+        VOICEOPTS=(-f alsa -ac $MICCHANNELS -i "$MICSOURCE")
         VOICEOPTS+=(-y)
-        ffmpeg "${VOICEOPTS[@]}" $VOICEFILE > $VOICELOG 2>&1 &
+        ffmpeg "${VOICEOPTS[@]}" "$VOICEFILE" > "$VOICELOG" 2>&1 &
         echo "$!" > "$VOICEPID"
     fi
 
     [[ -n $(pgrep jackd) ]] || MUTE=1
     if [[ -z $MUTE ]]
     then
-        jack_capture --daemon $AUDIOFILE &
+        jack_capture --daemon "$AUDIOFILE" &
         echo "$!" > "$AUDIOPID"
     fi
 
@@ -126,24 +127,24 @@ stop_recording() {
     fi
     if [[ -n $VIDEOCHECK ]]
     then
-        kill -2 $(cat "$VIDEOPID") && rm -f $VIDEOPID
+        kill -2 $(cat "$VIDEOPID") && rm -f "$VIDEOPID"
     elif [[ -e $VIDEOPID ]]
     then
-        rm -f $VIDEOPID
+        rm -f "$VIDEOPID"
     fi
     if [[ -n $VOICECHECK ]]
     then
-        kill -2 $(cat "$VOICEPID") && rm -f $VOICEPID
+        kill -2 $(cat "$VOICEPID") && rm -f "$VOICEPID"
     elif [[ -e $VOICEPID ]]
     then
         rm -f $VOICEPID
     fi
     if [[ -n $AUDIOCHECK ]]
     then
-        kill -2 $(cat "$AUDIOPID") && rm -f $AUDIOPID
+        kill -2 $(cat "$AUDIOPID") && rm -f "$AUDIOPID"
     elif [[ -e $AUDIOPID ]]
     then
-        rm -f $AUDIOPID
+        rm -f "$AUDIOPID"
     fi
     if [[ -t 0 ]]
     then
@@ -192,14 +193,22 @@ post_process() {
         AUDIOFILE=$VOICEFILE
     fi
 
-    TRANSCODEOPTS=(-i $VIDEOFILE)
-    [[ -z $AUDIOFILE ]] || TRANSCODEOPTS+=(-i $AUDIOFILE)
-    TRANSCODEOPTS+=(-vcodec $VCODEC)
-    [[ -z $AUDIOFILE ]] || TRANSCODEOPTS+=(-acodec $ACODEC -ab $BITRATE)
-    TRANSCODEOPTS+=(-y)
-
     notify "Transcoding... (this may take a while)"
-    ffmpeg "${TRANSCODEOPTS[@]}" "${POSTFILE}.${CONTAINER}" > $POSTLOG 2>&1
+    VIDEOOPTS=(-i "$VIDEOFILE" -vcodec "$VCODEC" -y)
+    ffmpeg "${VIDEOOPTS[@]}" "${RECDIR}/video-transcode.mkv" > $POSTLOG 2>&1
+    VIDEOFILE="${RECDIR}/video-transcode.mkv"
+    if [[ -e $AUDIOFILE ]]
+    then
+        AUDIOOPTS=(-i "$AUDIOFILE" -acodec "$ACODEC" -ab $BITRATE -y)
+        ffmpeg "${AUDIOOPTS[@]}" "${RECDIR}/audio-transcode.mka" >> $POSTLOG 2>&1
+        AUDIOFILE="${RECDIR}/audio-transcode.mka"
+    fi
+    TRANSCODEOPTS=(-i "$VIDEOFILE")
+    [[ -e $AUDIOFILE ]] && TRANSCODEOPTS+=(-i "$AUDIOFILE")
+    TRANSCODEOPTS+=(-vcodec copy)
+    [[ -e $AUDIOFILE ]] && TRANSCODEOPTS+=(-acodec copy)
+    TRANSCODEOPTS+=(-y)
+    ffmpeg "${TRANSCODEOPTS[@]}" "${POSTFILE}.${CONTAINER}" >> $POSTLOG 2>&1
     notify "Done."
     exit 0
 }
