@@ -10,21 +10,28 @@ source common.sh || exit 1
 depend jackd ffmpeg jack_capture sox xwininfo xdpyinfo osd_cat
 config
 
-VIDEOPID=${PIDPREFIX}-ffmpeg-video.pid
-AUDIOPID=${PIDPREFIX}-jack_capture.pid
-VOICEPID=${PIDPREFIX}-ffmpeg-voice.pid
-VIDEOLOG=${LOGDIR}/ffmpeg-video.log
-VOICELOG=${LOGDIR}/ffmpeg-voice.log
-AUDIOLOG=${LOGDIR}/ffmpeg-audio.log
-POSTLOG=${LOGDIR}/ffmpeg-post.log
-RECDIR=${RECDIR:-${HOME}/video/new}
-[[ -d "$RECDIR" ]] || RECDIR=$PWD
-VIDEOFILE=${RECDIR}/video.mkv
-VOICEFILE=${RECDIR}/voice.wav
-AUDIOFILE=${RECDIR}/audio.wav
-POSTFILE=${RECDIR}/processed
+VIDEOPID="${PIDPREFIX}-ffmpeg-video.pid"
+AUDIOPID="${PIDPREFIX}-jack_capture.pid"
+VOICEPID="${PIDPREFIX}-ffmpeg-voice.pid"
+VIDEOLOG="${LOGDIR}/ffmpeg-video.log"
+VOICELOG="${LOGDIR}/ffmpeg-voice.log"
+AUDIOLOG="${LOGDIR}/ffmpeg-audio.log"
+POSTLOG="${LOGDIR}/ffmpeg-post.log"
+RECDIR="${RECDIR:-${HOME}/video/new}"
+RECDIR="$(fixpath $RECDIR)"
+[[ -d "$RECDIR" ]] || RECDIR="$PWD"
+VIDEOFILE="${RECDIR}/video.mkv"
+VOICEFILE="${RECDIR}/voice.wav"
+AUDIOFILE="${RECDIR}/audio.wav"
+POSTFILE="${RECDIR}/processed"
+
+clean_recdir() {
+    rm -f ${RECDIR}/video.mkv
+    rm -f ${RECDIR}/{voice,voice-fixed,audio,audio-quiet,audio-mixed}.wav
+}
 
 start_recording() {
+    clean_recdir
     FPS=${FPS:-30}
     QUALITY=${QUALITY:-23}
     MICCHANNELS=${MICCHANNELS:-2}
@@ -192,7 +199,7 @@ post_process() {
     TRANSCODEOPTS+=(-y)
 
     notify "Transcoding... (this may take a while)"
-    ffmpeg "${TRANSCODEOPTS[@]}" ${POSTFILE}.${CONTAINER} > $POSTLOG 2>&1
+    ffmpeg "${TRANSCODEOPTS[@]}" "${POSTFILE}.${CONTAINER}" > $POSTLOG 2>&1
     notify "Done."
     exit 0
 }
@@ -202,10 +209,11 @@ usage() {
     echo "Record audio and video from your system.
 
 MODE can be one of:
-  start     Begins a new recording.
+  start     Begins a new recording (auto-cleans RECDIR).
   stop      Finish recording.
   status    Check if you are (still) recording.
   post      Do post-processing of a finished recording.
+  clean     Delete previous recording data from RECDIR.
 
 The following OPTIONS can be set for any MODE:
   --logdir DIR              Location to store log files. (Setting: LOGDIR)
@@ -427,6 +435,10 @@ case "$MODE" in
         else
             die "You are still recording."
         fi
+        ;;
+    clean   )
+        clean_recdir
+        exit 0
         ;;
     *       )
         usage
