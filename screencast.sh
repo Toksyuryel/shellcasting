@@ -446,6 +446,10 @@ case "$MODE" in
         fi
         ;;
     clean   )
+        while [[ $# -gt 0 ]]; do
+            common_options "$1" "$2"
+            shift 2
+        done
         clean_recdir
         exit 0
         ;;
