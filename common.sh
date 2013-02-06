@@ -19,7 +19,7 @@ depend() {
 
 config() {
     CONFDIR=${XDG_CONFIG_HOME:-${HOME}/.config}
-    [[ -d "$CONFDIR" ]] && CONFIG=${CONFIG:-${CONFIDIR}/$(basename $0).cfg} || CONFIG=${CONFIG:-${HOME}/.$(basename $0)rc}
+    [[ -d "$CONFDIR" ]] && CONFIG=${CONFIG:-${CONFDIR}/$(basename $0).cfg} || CONFIG=${CONFIG:-${HOME}/.$(basename $0)rc}
     [[ -r "$CONFIG" ]] && source $CONFIG
     RUNDIR=${RUNDIR:-${HOME}/.run}
     [[ -d "$RUNDIR" ]] || RUNDIR=$PWD

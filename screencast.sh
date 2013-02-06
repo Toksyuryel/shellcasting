@@ -295,7 +295,7 @@ common_options() {
             ;;
         --settings  )
             shift
-            if [[ -e $1 ]]
+            if [[ -r '$1' ]]
             then
                 CONFIG="$1"
                 config
@@ -341,7 +341,7 @@ case "$MODE" in
                         WINDOW=1
                         ;;
                     *                   )
-                        common_options
+                        common_options "$@"
                         ;;
                 esac
                 shift
@@ -360,7 +360,7 @@ case "$MODE" in
                     break
                     ;;
                 *               )
-                    common_options
+                    common_options "$@"
                     ;;
             esac
             shift
@@ -369,7 +369,7 @@ case "$MODE" in
         ;;
     status  )
         while [[ $# -gt 0 ]]; do
-            common_options
+            common_options "$@"
             shift
         done
         check_recording
@@ -427,7 +427,7 @@ case "$MODE" in
                         fi
                         ;;
                     *                   )
-                        common_options
+                        common_options "$@"
                         ;;
                 esac
                 shift
