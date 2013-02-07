@@ -344,7 +344,7 @@ post_options() {
             N=2
             ;;
         -d | --volume       )
-            if [[ -n $2 ]] && [[ "$2" =~ 'dB$' ]]
+            if [[ -n $2 ]] && [[ "$2" =~ dB$ ]]
             then
                 VOLUME="$2"
                 N=2
