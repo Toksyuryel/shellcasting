@@ -78,8 +78,6 @@ start_recording() {
     else
         osd top 48 left 200 red 4 black 10 "● REC"; osd top 48 left 100 red 2 black 3 "● REC"
     fi
-
-    exit 0
 }
 
 check_recording() {
@@ -369,6 +367,39 @@ post_options() {
     esac
 }
 
+start_options() {
+    case "$1" in
+        -c | --channels     )
+            [[ $2 -gt 0 ]] && MICCHANNELS=$2 || die "FATAL ERROR: MICCHANNELS must be at least 1."
+            N=2
+            ;;
+        -f | --fps          )
+            [[ $2 -gt 0 ]] && FPS=$2 || die "FATAL ERROR: FPS must be at least 1."
+            N=2
+            ;;
+        -m | --mute         )
+            MUTE=1
+            N=1
+            ;;
+        -q | --quality      )
+            [[ $2 -gt 0 ]] && QUALITY=$2 || die "FATAL ERROR: QUALITY must be at least 1."
+            N=2
+            ;;
+        -v | --voice        )
+            MICSOURCE="$2"
+            N=2
+            ;;
+        -w | --window       )
+            WINDOW=1
+            N=1
+            ;;
+        *                   )
+            common_options "$1" "$2"
+            N=1
+            ;;
+    esac
+}
+
 MODE="$1"
 shift
 case "$MODE" in
@@ -377,37 +408,12 @@ case "$MODE" in
         if [[ -z $VIDEOCHECK ]] && [[ -z $VOICECHECK ]] && [[ -z $AUDIOCHECK ]]
         then
             while [[ $# -gt 0 ]]; do
-                case "$1" in
-                    -c | --channels     )
-                        shift
-                        [[ $1 -gt 0 ]] && MICCHANNELS=$1 || die "FATAL ERROR: MICCHANNELS must be at least 1."
-                        ;;
-                    -f | --fps          )
-                        shift
-                        [[ $1 -gt 0 ]] && FPS=$1 || die "FATAL ERROR: FPS must be at least 1."
-                        ;;
-                    -m | --mute         )
-                        MUTE=1
-                        ;;
-                    -q | --quality      )
-                        shift
-                        [[ $1 -gt 0 ]] && QUALITY=$1 || die "FATAL ERROR: QUALITY must be at least 1."
-                        ;;
-                    -v | --voice        )
-                        shift
-                        MICSOURCE="$1"
-                        ;;
-                    -w | --window       )
-                        WINDOW=1
-                        ;;
-                    *                   )
-                        common_options "$1" "$2"
-                        shift
-                        ;;
-                esac
-                shift
+                start_options "$@"
+                shift $N
             done
             start_recording
+            check_recording
+            exit 0
         else
             die "You are already recording something."
         fi
